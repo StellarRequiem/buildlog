@@ -61,26 +61,27 @@ def _run(cmd: list[str]) -> str:
 def track_record() -> dict:
     """The public prediction track record — OUTCOMES ONLY (the edge stays private).
 
-    Reads the append-only, hash-chained predictions.jsonl directly and counts
-    defensively (schema-tolerant): total lines, and how many carry a probability
-    (a forecast) vs. an outcome (a resolution).
+    Uses the canonical calibration-log scorer over the live Yggdrasil track
+    (tracks/yggdrasil.jsonl): total predictions, resolved/pending, the Brier
+    score (0.25 = no-skill, 0 = perfect), and whether the hash-chain verifies.
+    Falls back to a raw line count if the package isn't importable.
     """
-    src = "~/calibration-log/predictions.jsonl"
-    p = HOME / "calibration-log" / "predictions.jsonl"
-    rows: list[dict] = []
-    if p.exists():
-        for line in p.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-    forecasts = [r for r in rows if any(k in r for k in ("prob", "probability", "p"))]
-    resolved = [r for r in rows if any(k in r for k in ("outcome", "resolved", "result"))]
-    return {"source": src, "entries": len(rows),
-            "forecasts": len(forecasts), "resolutions": len(resolved)}
+    src = "calibration-log: CalibrationLog('tracks/yggdrasil.jsonl').score()"
+    cl = HOME / "calibration-log"
+    track = cl / "tracks" / "yggdrasil.jsonl"
+    try:
+        import sys
+        if str(cl) not in sys.path:
+            sys.path.insert(0, str(cl))
+        from calibration_log import CalibrationLog  # type: ignore
+        s = CalibrationLog(str(track)).score()
+        return {"source": src, "total": s.get("total", 0), "resolved": s.get("resolved", 0),
+                "pending": s.get("pending", 0), "brier": s.get("brier"),
+                "chain_ok": bool(s.get("chain_ok"))}
+    except Exception:
+        n = len(track.read_text().splitlines()) if track.exists() else 0
+        return {"source": src + " (fallback: raw line count)", "total": n,
+                "resolved": None, "pending": None, "brier": None, "chain_ok": None}
 
 
 def verification_primitive() -> dict:
@@ -120,8 +121,11 @@ def render(days: int = 7) -> str:
         "Outcomes and tools only — no edge, no signals, no PII crosses the membrane._",
         "",
         "## The track record",
-        f"- **{cal['forecasts']}** forecasts logged · **{cal['resolutions']}** resolved · "
-        f"**{cal['entries']}** total entries — append-only, hash-chained.",
+        f"- **{cal['total']}** predictions logged"
+        + (f" · **{cal['resolved']}** resolved" if cal.get('resolved') is not None else "")
+        + (f" · Brier **{cal['brier']:.3f}** (0.25 = no-skill)" if cal.get('brier') is not None else "")
+        + (f" · chain {'✓ intact' if cal.get('chain_ok') else 'unverified'}" if cal.get('chain_ok') is not None else "")
+        + " — append-only, hash-chained.",
         f"  > source: `{cal['source']}`",
         "",
         "## The verification primitive",
