@@ -4,3 +4,4 @@ __pycache__/
 *.md
 !README.md
 !example-digest.md
+!case-verification-not-ungameability.md
