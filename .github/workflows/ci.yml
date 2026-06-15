@@ -1,0 +1,21 @@
+name: ci
+# Pure-stdlib repo — the only build dep is pytest itself. Runs the full suite
+# (buildlog / caseforge / proofthread) on every push and PR.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install pytest
+      - run: pytest -q
