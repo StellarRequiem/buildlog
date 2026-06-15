@@ -1,5 +1,7 @@
 # BuildLog — a verifiable content engine
 
+[![ci](https://github.com/StellarRequiem/buildlog/actions/workflows/ci.yml/badge.svg)](https://github.com/StellarRequiem/buildlog/actions/workflows/ci.yml)
+
 Generates publishable digests where **every figure is backed by a re-runnable,
 public source**: the [calibration-log](https://github.com/StellarRequiem/calibration-log)
 track record, the [verity](https://github.com/StellarRequiem/verity-core) primitive,
